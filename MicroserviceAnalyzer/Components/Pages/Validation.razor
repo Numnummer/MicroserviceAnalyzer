@@ -1,0 +1,78 @@
+@page "/Validation/{microserviceInfoId:guid}"
+@using MicroserviceAnalyzer.BL
+@using MicroserviceAnalyzer.BL.Entities
+@using MicroserviceAnalyzer.BL.Models
+@using MicroserviceAnalyzer.DataAccess
+@inject MicroserviceInfoStorage Storage
+@using Microsoft.JSInterop
+@inject IJSRuntime JSRuntime
+
+<h3>Предварительный просмотр шаблонного микросервиса</h3>
+<p>Архитектура: @Arch</p>
+<div style="display: flex; flex-direction: row;">
+    <FileExplorer Tree="FileSystem"></FileExplorer>
+    <div style="display: flex; flex-direction: column">
+        <div style="margin-left: 2vw">Есть веб слой @ApiInfo.HasWeb</div>
+        <div style="margin-left: 2vw">Есть grpc слой @ApiInfo.HasGrpc</div>
+        <div style="margin-left: 2vw">Версия dotnet api слоя @ApiInfo.DotnetVersion</div>
+        <div style="margin-left: 2vw">Есть EfCore DbContext @DataInfo.HasEfCoreContext</div>
+        <div style="margin-left: 2vw">Версия dotnet data слоя @DataInfo.DotnetVersion</div>
+    </div>
+    
+</div>
+
+<button @onclick="DownloadScript">Скачать шаблон</button>
+
+<script>
+    window.downloadFileFromStream = async (fileName, contentStreamReference) => {
+        const arrayBuffer = await contentStreamReference.arrayBuffer();
+        const blob = new Blob([arrayBuffer]);
+        const url = URL.createObjectURL(blob);
+        const anchorElement = document.createElement('a');
+        anchorElement.href = url;
+        anchorElement.download = fileName ?? '';
+        anchorElement.click();
+        anchorElement.remove();
+        URL.revokeObjectURL(url);
+    }
+</script>
+
+@code {
+    [Parameter] public Guid MicroserviceInfoId { get; set; }
+    private string? Arch { get; set; }
+    private FileSystem? FileSystem { get; set; }
+    private ApiInfo ApiInfo { get; set; }
+    private DataInfo DataInfo { get; set; }
+    protected override void OnInitialized()
+    {
+        var info = Storage.Items
+            .FirstOrDefault(i => i.Id == MicroserviceInfoId)
+            ?.MicroserviceInfo;
+        Arch = info?
+            .Architecture
+            .Architecture
+            .ToString();
+        
+        FileSystem = info?.FileSystem;
+        ApiInfo = info?.ApiInfo ?? new ApiInfo();
+        DataInfo = info?.DataInfo ?? new DataInfo();
+    }
+
+    private async Task DownloadScript()
+    {
+        var info = Storage.Items
+            .FirstOrDefault(i => i.Id == MicroserviceInfoId)
+            ?.MicroserviceInfo;
+        var fileName = $"microservice-template-{DateTime.Now:yyyyMMddHHmmss}.sh";
+        await DownloadFile(fileName, info.Script.ToString(), "text/x-shellscript");
+    }
+    private async Task DownloadFile(string fileName, string content, string mimeType)
+    {
+        var fileStream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(content));
+        using var streamRef = new DotNetStreamReference(fileStream);
+        
+        await JSRuntime.InvokeVoidAsync("downloadFileFromStream", 
+            fileName, 
+            streamRef);
+    }
+}

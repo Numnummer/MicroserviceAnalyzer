@@ -1,0 +1,138 @@
+@* TreeViewNode.razor *@
+@using System.IO
+@using MicroserviceAnalyzer.BL.Models
+@using MicroserviceAnalyzer.Entities
+
+
+<div class="tree-node" oncontextmenu="@HandleContextMenu" @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation>    
+    
+    <div class="node-content @(Node.IsSelected ? "selected" : "")" 
+         style="padding-left: @(Level * 20)px">
+        
+        <span class="node-icon me-2" @onclick="@(() => ToggleNode(Node))"
+              @onclick:preventDefault="Node.IsDirectory">
+            @Node.Icon
+        </span>
+        
+        @if (Node.IsEditing)
+        {
+            <input @ref="editInputRef" 
+                   class="form-control form-control-sm d-inline-block w-auto"
+                   @bind="Node.Name"
+                   @bind:event="oninput"
+                   @onkeyup="@(e => OnEditKeyUp(e, Node))"
+                   @onblur="@(() => FinishEditing(Node, false))" />
+        }
+        else
+        {
+            <span class="node-name" @ondblclick="@(() => StartEditing(Node))"
+                  @onclick="@(() => ToggleNode(Node))">
+                @Node.Name
+            </span>
+        }
+        
+        
+    </div>
+    
+    @if (Node.IsDirectory && Node.IsExpanded && Node.Children?.Count > 0)
+    {
+        <div class="node-children">
+            @foreach (var child in Node.Children.OrderBy(c => c.IsDirectory ? 0 : 1).ThenBy(c => c.Name))
+            {
+                <TreeViewNode Node="child" Level="@(Level + 1)" Tree="Tree" ShowContextMenu="@ShowContextMenu"
+                SetContextMenuPos="@SetContextMenuPos"/>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public FileSystem.TreeNode Node { get; set; } = null!;
+    [Parameter] public int Level { get; set; }
+    [Parameter] public FileSystem Tree { get; set; } = null!;
+    [Parameter] public EventCallback<FileSystem.TreeNode> ShowContextMenu {get;set;}
+    [Parameter] public EventCallback<MouseEventArgs> SetContextMenuPos {get;set;}
+
+    private ElementReference editInputRef;
+    private bool _showContextMenu;
+    private List<ContextMenuItem> _currentContextMenuItems=new();
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Node.IsEditing)
+        {
+            await editInputRef.FocusAsync();
+            //await JSRuntime.InvokeVoidAsync("selectInputText", editInputRef);
+        }
+    }
+    
+    
+    private void ToggleNode(FileSystem.TreeNode node)
+    {
+        if (node.IsDirectory)
+        {
+            node.IsExpanded = !node.IsExpanded;
+        }
+    }
+    
+    private void StartEditing(FileSystem.TreeNode node)
+    {
+        node.IsEditing = true;
+    }
+    
+    private void OnEditKeyUp(KeyboardEventArgs e, FileSystem.TreeNode node)
+    {
+        switch (e.Key)
+        {
+            case "Enter":
+                FinishEditing(node, true);
+                break;
+            case "Escape":
+                FinishEditing(node, false);
+                break;
+        }
+    }
+    
+    private void FinishEditing(FileSystem.TreeNode node, bool save)
+    {
+        if (save && editInputRef.Context != null)
+        {
+            Tree.RenameNode(node, Node.Name);
+        }
+        
+        node.IsEditing = false;
+    }
+    
+    private string FormatSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        int order = 0;
+        double len = bytes;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len /= 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+    
+    private string GetChildCount(FileSystem.TreeNode node)
+    {
+        if (node.Children == null) return "0";
+        var dirs = node.Children.Count(c => c.IsDirectory);
+        var files = node.Children.Count(c => !c.IsDirectory);
+        return $"{dirs}/{files}";
+    }    
+    
+    private void HandleContextMenu(MouseEventArgs e)
+    {
+        if(ShowContextMenu.HasDelegate)
+        {
+            ShowContextMenu.InvokeAsync(Node);
+        }
+        if(SetContextMenuPos.HasDelegate)
+        {            
+            SetContextMenuPos.InvokeAsync(e);
+        }
+    }
+}

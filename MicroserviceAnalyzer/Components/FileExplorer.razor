@@ -1,0 +1,217 @@
+@* FileExplorer.razor *@
+@using System.IO
+@using MicroserviceAnalyzer.BL.Models
+@using MicroserviceAnalyzer.Entities
+@using System.Runtime.InteropServices
+@inject IJSRuntime JsRuntime
+
+<div class="file-explorer" @ref="_containerRef">
+    <div class="toolbar mb-3">
+        <button class="btn btn-sm btn-outline-primary" @onclick="ToggleAll">
+            @(_allExpanded ? "Свернуть всё" : "Развернуть всё")
+        </button>
+    </div>
+
+    <div class="tree-container">
+        @if (Tree?.Root != null)
+        {
+            <OutsideHandleContainer OnClickOutside="@HideContextMenu">
+                <ContextMenu ShowContextMenu="@_showContextMenu" CurrentContextMenuItems="@_currentContextMenuItems"
+            Position="@_contextMenuPosition"></ContextMenu>
+            </OutsideHandleContainer>
+            
+            <div>
+                <TreeViewNode Node="Tree.Root" Level="0" Tree="Tree" ShowContextMenu="@ShowContextMenu"
+                SetContextMenuPos="@SetContextMenuPos"/>
+            </div>
+            
+        }
+        else
+        {
+            <div class="alert alert-warning">Дерево файлов не загружено</div>
+        }
+    </div>
+
+</div>
+
+@code {
+    [Parameter] public FileSystem? Tree { get; set; }
+    
+    private ElementReference _containerRef;
+    private bool _allExpanded;
+    private FileSystem.TreeNode? _contextMenuNode;
+    private bool _showContextMenu;
+    private double _contextMenuX;
+    private double _contextMenuY;
+    private string? _newNodeName;
+    private (double,double) _contextMenuPosition;
+
+    private List<ContextMenuItem> _currentContextMenuItems=new();
+
+    protected override void OnParametersSet()
+    {
+        if (Tree == null) return;
+        Tree.NodeChanged += OnNodeChanged;
+        Tree.NodeCreated += OnNodeCreated;
+        Tree.NodeDeleted += OnNodeDeleted;
+    }
+
+    private void ToggleAll()
+    {
+        _allExpanded = !_allExpanded;
+        ToggleNodeRecursive(Tree?.Root, _allExpanded);
+    }
+
+    private void ToggleNodeRecursive(FileSystem.TreeNode? node, bool expandFlag)
+    {
+        if (node == null) return;
+        node.IsExpanded = expandFlag;
+        if (node.Children == null) return;
+        foreach (var child in node.Children.Where(c => c.IsDirectory))
+        {
+            ToggleNodeRecursive(child, expandFlag);
+        }
+    }
+
+    private void OnNodeChanged(object? sender, FileSystem.TreeNode node)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnNodeCreated(object? sender, FileSystem.TreeNode node)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnNodeDeleted(object? sender, FileSystem.TreeNode node)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    
+    private void HideContextMenu()
+    {
+        _showContextMenu = false;
+        _newNodeName = null;
+        StateHasChanged();
+    }
+
+    private async Task RenameNode()
+    {
+        if (_contextMenuNode != null)
+        {
+            _contextMenuNode.IsEditing = true;
+            HideContextMenu();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task CreateNewFolder()
+    {
+        if (_contextMenuNode?.IsDirectory == true)
+        {
+            _newNodeName = "Новая папка";
+            HideContextMenu();
+            await StartCreateOperation("folder");
+        }
+    }
+
+    private async Task CreateNewFile()
+    {
+        if (_contextMenuNode?.IsDirectory == true)
+        {
+            _newNodeName = "Новый файл.txt";
+            HideContextMenu();
+            await StartCreateOperation("file");
+        }
+    }
+
+    private async Task StartCreateOperation(string type)
+    {
+        // Показываем диалог ввода имени
+        var result = await JsRuntime.InvokeAsync<string>("prompt", 
+            $"Введите имя {(type == "folder" ? "папки" : "файла")}:", 
+            _newNodeName);
+        
+        if (!string.IsNullOrWhiteSpace(result))
+        {
+            try
+            {
+                if (type == "folder")
+                    Tree?.CreateDirectory(_contextMenuNode!, result);
+                else
+                    Tree?.CreateFile(_contextMenuNode!, result);
+            }
+            catch (Exception ex)
+            {
+                await JsRuntime.InvokeVoidAsync("alert", $"Ошибка: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task DeleteNode()
+    {
+        if (_contextMenuNode != null)
+        {
+            var confirmed = await JsRuntime.InvokeAsync<bool>("confirm", 
+                $"Удалить '{_contextMenuNode.Name}'?");
+            
+            if (confirmed)
+            {
+                Tree?.DeleteNode(_contextMenuNode);
+            }
+            HideContextMenu();
+        }
+    }
+
+    private void ShowContextMenu(FileSystem.TreeNode node)
+    {
+        _showContextMenu=true;
+        _contextMenuNode=node;
+        var rename=new ContextMenuItem()
+        {
+            Name="Переименовать",
+            Handler=async()=>
+            {
+                await RenameNode();
+            }
+        };
+        var addFile=new ContextMenuItem()
+        {
+            Name="Добавить файл",
+            Handler=async()=>
+            {
+                await CreateNewFile();
+            }
+        };
+        var addFolder=new ContextMenuItem()
+        {
+            Name="Добавить папку",
+            Handler=async()=>
+            {
+                await CreateNewFolder();
+            }
+        };
+        var delete=new ContextMenuItem()
+        {
+            Name="Удалить",
+            Handler=async()=>
+            {
+                await DeleteNode();
+            }
+        };
+        if(node.IsDirectory)
+        {
+            _currentContextMenuItems=[rename, addFile, addFolder, delete];
+        }
+        else
+        {
+            _currentContextMenuItems=[rename, delete];
+        }
+       
+    }
+    private void SetContextMenuPos(MouseEventArgs e)
+    {
+        _contextMenuPosition=(e.ClientX, e.ClientY);        
+    }
+}

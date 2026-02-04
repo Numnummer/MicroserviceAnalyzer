@@ -1,0 +1,77 @@
+﻿@page "/analyzer"
+@using System.IO.Compression
+@using MicroserviceAnalyzer.BL
+@using MicroserviceAnalyzer.BL.Abstractions.Models
+@using MicroserviceAnalyzer.BL.Abstractions.Services
+@using MicroserviceAnalyzer.BL.Helpers
+@using MicroserviceAnalyzer.BL.Models
+@using MicroserviceAnalyzer.BL.Services
+@using MicroserviceAnalyzer.DataAccess
+@rendermode InteractiveServer
+@inject IMicroserviceService MicroserviceService
+@inject IScriptService ScriptService
+@inject NavigationManager NavigationManager
+@inject MicroserviceInfoStorage Storage
+<PageTitle>Counter</PageTitle>
+
+<form method="post" @onsubmit="Submit">
+    <AntiforgeryToken></AntiforgeryToken>
+    <div>
+        <label>Github Url:</label>
+        <InputFile accept=".zip" OnChange="@OnFileSelected"/>
+    </div>
+    <button type="submit">Submit</button>
+</form>
+
+@code {
+    private IBrowserFile? _selectedFile;
+
+    private void OnFileSelected(InputFileChangeEventArgs e)
+    {
+        _selectedFile = e.File;
+    }
+
+    private async Task Submit()
+    {
+        await ExtractZipArchiveAsync();
+        using var analyzer = new MicroserviceService();
+        var microserviceInfo = await analyzer.AnalyzeAsync();
+        var script = await analyzer.BuildScriptAsync(microserviceInfo);
+        await ScriptService.RunScriptAsync(script, MicroserviceHelper.PathToAnalyzedMicroservice);
+        microserviceInfo.FileSystem = new FileSystem(MicroserviceHelper.PathToAnalyzedMicroservice);
+        var id = Guid.NewGuid();
+        this.Storage.Items.Add(new MicroserviceInfoStorageItem()
+        {
+            MicroserviceInfo = microserviceInfo,
+            Id = id
+        });
+        NavigationManager.NavigateTo($"/Validation/{id}");
+    }
+
+    private async Task ExtractZipArchiveAsync()
+    {
+        var tempZipPath = Path.GetTempFileName();
+        try
+        {
+            if(_selectedFile==null)
+            {
+                return;
+            }
+            await using var stream = _selectedFile.OpenReadStream(maxAllowedSize: 50 * 1024 * 1024);            
+            Directory.CreateDirectory(MicroserviceHelper.PathToAnalyzedMicroservice);
+            await using (var fileStream = File.Create(tempZipPath))
+            {
+                await stream.CopyToAsync(fileStream);
+            }
+            SafeZipExtractor.ExtractZipSafely(tempZipPath, MicroserviceHelper.PathToAnalyzedMicroservice);
+        }
+        finally
+        {
+            if (File.Exists(tempZipPath))
+                File.Delete(tempZipPath);
+        }
+    }
+    
+    
+
+}

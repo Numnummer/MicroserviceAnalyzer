@@ -1,0 +1,17 @@
+﻿@using MicroserviceAnalyzer.Entities
+@if (ShowContextMenu)
+{
+    <div style="z-index: 50; background-color: azure; position: absolute;
+    left: @(Position.Item1)px; top: @(Position.Item2)px;">
+        @foreach (var item in CurrentContextMenuItems)
+        {
+            <div @onclick="item.Handler">@item.Name</div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public bool ShowContextMenu {get;set;}
+    [Parameter] public List<ContextMenuItem> CurrentContextMenuItems {get;set;}=new();
+    [Parameter] public (double,double) Position {get;set;}
+}

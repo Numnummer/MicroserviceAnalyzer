@@ -1,0 +1,88 @@
+﻿@using Microsoft.JSInterop;
+@inject Microsoft.JSInterop.IJSRuntime JSRuntime;
+
+<div @ref="containerRef" @onclick="HandleContainerClick">
+    @ChildContent
+</div>
+
+<script>
+        window.outsideClickHandlers = new Map();
+        
+        window.registerOutsideClickHandler = (dotNetHelper, element) => {            
+            const handler = (event) => {
+                try {
+                    // Проверяем, что клик был вне элемента
+                    if (element && !element.contains(event.target)) {
+                        console.log('Click outside detected');
+                        dotNetHelper.invokeMethodAsync('HandleClickOutside');
+                    }
+                } catch (error) {
+                    console.error('Error in outside click handler:', error);
+                }
+            };
+            
+            window.outsideClickHandlers.set(element, handler);
+            
+            setTimeout(() => {
+                document.addEventListener('click', handler, true);
+            }, 0);
+        };
+        
+        window.unregisterOutsideClickHandler = (element) => {
+            console.log('unregisterOutsideClickHandler called');
+            const handler = window.outsideClickHandlers.get(element);
+            if (handler) {
+                document.removeEventListener('click', handler, true);
+                window.outsideClickHandlers.delete(element);
+            }
+        };
+</script>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public EventCallback OnClickOutside { get; set; }
+    
+    private ElementReference containerRef;
+    private bool _isInitialized = false;
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {            
+            await InitializeClickOutsideHandler();
+        }
+    }
+    
+    private async Task InitializeClickOutsideHandler()
+    {
+        if (!_isInitialized)
+        {
+            _isInitialized = true;
+            await JSRuntime.InvokeVoidAsync("registerOutsideClickHandler", 
+                DotNetObjectReference.Create(this), 
+                containerRef);
+        }
+    }
+    
+    private void HandleContainerClick()
+    {
+        
+    }
+    
+    [JSInvokable]
+    public async Task HandleClickOutside()
+    {
+        if (OnClickOutside.HasDelegate)
+        {
+            await OnClickOutside.InvokeAsync();
+        }
+    }
+    
+    public void Dispose()
+    {
+        if (_isInitialized)
+        {
+            JSRuntime.InvokeVoidAsync("unregisterOutsideClickHandler", containerRef);
+        }
+    }
+}
