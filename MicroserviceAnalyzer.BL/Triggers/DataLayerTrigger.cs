@@ -4,7 +4,7 @@ namespace MicroserviceAnalyzer.BL.Triggers;
 
 public class DataLayerTrigger: Trigger
 {
-    private readonly string[] _dataLayers = ["dal", "dataaccess", "repository", "persistence"];
+    private readonly string[] _dataLayers = ["dal", "dataaccess", "repository", "persistence", "data"];
     public FileSystem.TreeNode? DataLayerNode { get; set; }
     protected override byte CalculateTriggerPercentage()
     {

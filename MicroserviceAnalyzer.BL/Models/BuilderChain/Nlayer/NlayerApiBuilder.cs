@@ -22,9 +22,9 @@ public class NlayerApiBuilder:ChainUnit
     private string BuildWebScript(string projectVersion)
     {
         return
-            $"dotnet new web --name $name.Web\ndotnet sln $name.sln add $name.Web\ncd $name.Web\nproj_version=\"{projectVersion}\"\nfind . -name \"$name.Web.csproj\" | while read -r file; do\n    if _ -f \"$file\" _; then\n        sed -i \"s|<TargetFramework>.*</TargetFramework>|<TargetFramework>$proj_version</TargetFramework>|g\" \"$file\"\n    fi\ndone\ncd ..\n";
+            $"#api_begin\ndotnet new web --name $name.Web\ndotnet sln $name.sln add $name.Web\ncd $name.Web\nproj_version=\"{projectVersion}\"\nfind . -name \"$name.Web.csproj\" | while read -r file; do\n    if _ -f \"$file\" _; then\n        sed -i \"s|<TargetFramework>.*</TargetFramework>|<TargetFramework>$proj_version</TargetFramework>|g\" \"$file\"\n    fi\ndone\ncd ..\n#api_end\n";
     }
 
     private string BuildGrpcScript(string projectVersion)
-        => $"dotnet new grpc --name $name.Web\ndotnet sln $name.sln add $name.Web\ncd $name.Web\nproj_version=\"{projectVersion}\"\nfind . -name \"$name.Web.csproj\" | while read -r file; do\n    if _ -f \"$file\" _; then\n        sed -i \"s|<TargetFramework>.*</TargetFramework>|<TargetFramework>$proj_version</TargetFramework>|g\" \"$file\"\n    fi\ndone\ncd ..\n";
+        => $"#api_begin\ndotnet new grpc --name $name.Web\ndotnet sln $name.sln add $name.Web\ncd $name.Web\nproj_version=\"{projectVersion}\"\nfind . -name \"$name.Web.csproj\" | while read -r file; do\n    if _ -f \"$file\" _; then\n        sed -i \"s|<TargetFramework>.*</TargetFramework>|<TargetFramework>$proj_version</TargetFramework>|g\" \"$file\"\n    fi\ndone\ncd ..\n#api_end\n";
 }

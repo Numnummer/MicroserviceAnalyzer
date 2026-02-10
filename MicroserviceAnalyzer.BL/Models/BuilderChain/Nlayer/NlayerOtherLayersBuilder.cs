@@ -34,6 +34,7 @@ public class NlayerOtherLayersBuilder:ChainUnit
 
     private string GetOtherLayerCreateProjectScript(FileSystem.TreeNode node, string dotnetVersion)
     {
-        return $"dotnet new classlib --name {node.Name}\ndotnet sln $name.sln add {node.Name}\ncd {node.Name}\nproj_version=\"{dotnetVersion}\"\nfind . -name \"{node.Name}.csproj\" | while read -r file; do\n    if _ -f \"$file\" _; then\n        sed -i \"s|<TargetFramework>.*</TargetFramework>|<TargetFramework>$proj_version</TargetFramework>|g\" \"$file\"\n    fi\ndone\ncd ..\n";
+        var name = node.Name.Contains('.') ? "$name." + node.Name.Split('.').Last() : "$name";
+        return $"dotnet new classlib --name {name}\ndotnet sln $name.sln add {name}\ncd {name}\nproj_version=\"{dotnetVersion}\"\nfind . -name \"{name}.csproj\" | while read -r file; do\n    if _ -f \"$file\" _; then\n        sed -i \"s|<TargetFramework>.*</TargetFramework>|<TargetFramework>$proj_version</TargetFramework>|g\" \"$file\"\n    fi\ndone\ncd ..\n";
     }
 }
