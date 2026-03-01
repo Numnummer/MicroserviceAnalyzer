@@ -10,7 +10,7 @@
 <h3>Предварительный просмотр шаблонного микросервиса</h3>
 <p>Архитектура: @Arch</p>
 <div style="display: flex; flex-direction: row;">
-    <FileExplorer Tree="FileSystem"></FileExplorer>
+    <FileExplorer Tree="FileSystem" AppendScript="@AddScript"></FileExplorer>
     <div style="display: flex; flex-direction: column">
         <div style="margin-left: 2vw">Есть веб слой @ApiInfo.HasWeb</div>
         <div style="margin-left: 2vw">Есть grpc слой @ApiInfo.HasGrpc</div>
@@ -43,28 +43,29 @@
     private FileSystem? FileSystem { get; set; }
     private ApiInfo ApiInfo { get; set; }
     private DataInfo DataInfo { get; set; }
+    private MicroserviceInfo? MicroserviceInfo {get;set;}
     protected override void OnInitialized()
     {
-        var info = Storage.Items
+        MicroserviceInfo = Storage.Items
             .FirstOrDefault(i => i.Id == MicroserviceInfoId)
             ?.MicroserviceInfo;
-        Arch = info?
+        Arch = MicroserviceInfo?
             .Architecture
             .Architecture
             .ToString();
         
-        FileSystem = info?.FileSystem;
-        ApiInfo = info?.ApiInfo ?? new ApiInfo();
-        DataInfo = info?.DataInfo ?? new DataInfo();
+        FileSystem = MicroserviceInfo?.FileSystem;
+        ApiInfo = MicroserviceInfo?.ApiInfo ?? new ApiInfo();
+        DataInfo = MicroserviceInfo?.DataInfo ?? new DataInfo();
     }
 
     private async Task DownloadScript()
-    {
-        var info = Storage.Items
-            .FirstOrDefault(i => i.Id == MicroserviceInfoId)
-            ?.MicroserviceInfo;
-        var fileName = $"microservice-template-{DateTime.Now:yyyyMMddHHmmss}.sh";
-        await DownloadFile(fileName, info.Script.ToString(), "text/x-shellscript");
+    {        
+        if(MicroserviceInfo!=null)
+        {
+            var fileName = $"microservice-template-{DateTime.Now:yyyyMMddHHmmss}.sh";
+            await DownloadFile(fileName, MicroserviceInfo.Script.ToString(), "text/x-shellscript");
+        }        
     }
     private async Task DownloadFile(string fileName, string content, string mimeType)
     {
@@ -74,5 +75,12 @@
         await JSRuntime.InvokeVoidAsync("downloadFileFromStream", 
             fileName, 
             streamRef);
+    }
+    private void AddScript(string script)
+    {
+        if(MicroserviceInfo!=null)
+        {
+            MicroserviceInfo.Script.Append(script);
+        }
     }
 }

@@ -22,7 +22,9 @@
             
             <div>
                 <TreeViewNode Node="Tree.Root" Level="0" Tree="Tree" ShowContextMenu="@ShowContextMenu"
-                SetContextMenuPos="@SetContextMenuPos"/>
+                SetContextMenuPos="@SetContextMenuPos" AddAlterOperationScript="@(async(string newName)=>{
+                    await AddAlterOperationScript("mv", newName);
+                })"/>
             </div>
             
         }
@@ -36,6 +38,7 @@
 
 @code {
     [Parameter] public FileSystem? Tree { get; set; }
+    [Parameter] public EventCallback<string> AppendScript {get;set;}
     
     private ElementReference _containerRef;
     private bool _allExpanded;
@@ -128,7 +131,6 @@
 
     private async Task StartCreateOperation(string type)
     {
-        // Показываем диалог ввода имени
         var result = await JsRuntime.InvokeAsync<string>("prompt", 
             $"Введите имя {(type == "folder" ? "папки" : "файла")}:", 
             _newNodeName);
@@ -138,13 +140,49 @@
             try
             {
                 if (type == "folder")
+                {                    
                     Tree?.CreateDirectory(_contextMenuNode!, result);
+                    await AddCreateOperationScript($"mkdir {result}");
+                }
                 else
+                {                    
                     Tree?.CreateFile(_contextMenuNode!, result);
+                    await AddCreateOperationScript($"touch {result}");
+                }
             }
             catch (Exception ex)
             {
                 await JsRuntime.InvokeVoidAsync("alert", $"Ошибка: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task AddCreateOperationScript(string createCommand)
+    {
+        var cdPathComponents=_contextMenuNode?.FullPath.Split('/')[4..];
+        if(cdPathComponents!=null)
+        {
+            var cdPath = Path.Combine(cdPathComponents);
+            var reverseCd = string.Concat(Enumerable.Repeat("../",cdPathComponents.Length));
+            var script=$"\ncd {cdPath}\n{createCommand}\ncd {reverseCd}\n";
+            if(AppendScript.HasDelegate)
+            {
+                await AppendScript.InvokeAsync(script);
+            }
+        }
+    }
+    private async Task AddAlterOperationScript(string alterCommand, string extraCommand="")
+    {
+        var filePathComponents=extraCommand==""?
+            _contextMenuNode?.FullPath.Split(Path.DirectorySeparatorChar)[4..]:
+            _contextMenuNode?.OldFullPath.Split(Path.DirectorySeparatorChar)[4..];
+        if(filePathComponents!=null)
+        {
+            var filePath = Path.Combine(filePathComponents);
+            var script=$"\n{alterCommand} {filePath} {extraCommand}\n";
+            if(AppendScript.HasDelegate)
+            {
+                await AppendScript.InvokeAsync(script);
             }
         }
     }
@@ -159,6 +197,14 @@
             if (confirmed)
             {
                 Tree?.DeleteNode(_contextMenuNode);
+                if(_contextMenuNode.IsDirectory)
+                {
+                    await AddAlterOperationScript("rm -r");
+                }
+                else
+                {
+                    await AddAlterOperationScript("rm");
+                }
             }
             HideContextMenu();
         }

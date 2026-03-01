@@ -25,7 +25,7 @@
         }
         else
         {
-            <span class="node-name" @ondblclick="@(() => StartEditing(Node))"
+            <span class="node-name"
                   @onclick="@(() => ToggleNode(Node))">
                 @Node.Name
             </span>
@@ -40,7 +40,7 @@
             @foreach (var child in Node.Children.OrderBy(c => c.IsDirectory ? 0 : 1).ThenBy(c => c.Name))
             {
                 <TreeViewNode Node="child" Level="@(Level + 1)" Tree="Tree" ShowContextMenu="@ShowContextMenu"
-                SetContextMenuPos="@SetContextMenuPos"/>
+                SetContextMenuPos="@SetContextMenuPos" AddAlterOperationScript="@AddAlterOperationScript"/>
             }
         </div>
     }
@@ -52,6 +52,7 @@
     [Parameter] public FileSystem Tree { get; set; } = null!;
     [Parameter] public EventCallback<FileSystem.TreeNode> ShowContextMenu {get;set;}
     [Parameter] public EventCallback<MouseEventArgs> SetContextMenuPos {get;set;}
+    [Parameter] public EventCallback<string> AddAlterOperationScript {get;set;}
 
     private ElementReference editInputRef;
     private bool _showContextMenu;
@@ -73,12 +74,7 @@
         {
             node.IsExpanded = !node.IsExpanded;
         }
-    }
-    
-    private void StartEditing(FileSystem.TreeNode node)
-    {
-        node.IsEditing = true;
-    }
+    }        
     
     private void OnEditKeyUp(KeyboardEventArgs e, FileSystem.TreeNode node)
     {
@@ -98,6 +94,10 @@
         if (save && editInputRef.Context != null)
         {
             Tree.RenameNode(node, Node.Name);
+            if(AddAlterOperationScript.HasDelegate)
+            {
+                AddAlterOperationScript.InvokeAsync(Path.Combine(Node.FullPath.Split(Path.DirectorySeparatorChar)[4..]));
+            }
         }
         
         node.IsEditing = false;

@@ -11,6 +11,7 @@ public class FileSystem
     {
         public Guid Id { get; } = Guid.NewGuid();
         public string Name { get; set; } = string.Empty;
+        public string OldFullPath { get; set; } = string.Empty;
         public string FullPath { get; set; } = string.Empty;
         public bool IsDirectory { get; set; }
         public bool IsExpanded { get; set; }
@@ -127,16 +128,17 @@ public class FileSystem
         return node;
     }
     
-    // Операции редактирования
     public bool RenameNode(TreeNode node, string newName)
     {
-        if (string.IsNullOrWhiteSpace(newName) || newName == node.Name)
+        if (string.IsNullOrWhiteSpace(newName))
             return false;
         
         try
         {
-            // Обновляем индексы
-            node.Name = newName;
+            node.OldFullPath = node.FullPath;
+            var fullPathParts = node.FullPath.Split(Path.DirectorySeparatorChar);            
+            fullPathParts[^1] = newName;
+            node.FullPath = Path.DirectorySeparatorChar + Path.Combine(fullPathParts);
             NodeChanged?.Invoke(this, node);
             return true;
         }
@@ -154,6 +156,7 @@ public class FileSystem
             var newNode = new TreeNode
             {
                 Name = directoryName,
+                FullPath = Path.Combine(parent.FullPath, directoryName),
                 IsDirectory = true,
                 Parent = parent,
                 CreatedDate = DateTime.Now,
@@ -162,7 +165,7 @@ public class FileSystem
             
             parent.Children ??= new List<TreeNode>();
             parent.Children.Add(newNode);
-            parent.IsExpanded = true; // Автоматически раскрываем родителя
+            parent.IsExpanded = true; 
             
             _idIndex[newNode.Id] = newNode;
             
