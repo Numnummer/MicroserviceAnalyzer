@@ -1,0 +1,38 @@
+﻿@page "/texteditor"
+@using MicroserviceAnalyzer.Entities
+
+<div style="@(IsOpened ? "display: flex; flex-direction: column;" : "display: none;")">
+    <div>@Data.FileName</div>
+    <div class="text-editor">
+        <textarea @bind="@Data.Text" @oninput="OnTextInput" class="editor-textbox" rows="10" cols="50"></textarea>
+    </div>   
+    <button @onclick="@SaveChangesToScript">Сохранить</button> 
+</div>
+
+
+@code {
+    [Parameter] public FileTextData Data {get;set;} = new();
+    [Parameter] public EventCallback<string> AppendScript {get;set;}
+    [Parameter] public EventCallback CloseEditor {get;set;}
+    [Parameter] public bool IsOpened {get;set;}
+
+    private void OnTextInput(ChangeEventArgs e)
+    {
+        // You can add any logic here for processing text on input
+        Data.Text = e.Value?.ToString();
+    }
+
+    private void SaveChangesToScript()
+    {        
+        if(AppendScript.HasDelegate && CloseEditor.HasDelegate)
+        {
+            var script = $@"
+cat << 'EOF' > {Data.FileRelativeToMicroservicePath}
+{Data.Text}
+EOF
+";
+            AppendScript.InvokeAsync(script);
+            CloseEditor.InvokeAsync();
+        }        
+    }
+}

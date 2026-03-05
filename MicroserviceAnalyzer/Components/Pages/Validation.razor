@@ -4,13 +4,15 @@
 @using MicroserviceAnalyzer.BL.Models
 @using MicroserviceAnalyzer.DataAccess
 @inject MicroserviceInfoStorage Storage
+@using MicroserviceAnalyzer.Entities
 @using Microsoft.JSInterop
 @inject IJSRuntime JSRuntime
 
 <h3>Предварительный просмотр шаблонного микросервиса</h3>
 <p>Архитектура: @Arch</p>
 <div style="display: flex; flex-direction: row;">
-    <FileExplorer Tree="FileSystem" AppendScript="@AddScript"></FileExplorer>
+    <FileExplorer Tree="FileSystem" AppendScript="@AddScript" OnTextLoaded="@OpenFileForEditor"></FileExplorer>
+    <TextEditor Data="@FileTextData" AppendScript="@AddScript" IsOpened="@IsTextEditorOpened" CloseEditor="@CloseTextEditor"></TextEditor>
     <div style="display: flex; flex-direction: column">
         <div style="margin-left: 2vw">Есть веб слой @ApiInfo.HasWeb</div>
         <div style="margin-left: 2vw">Есть grpc слой @ApiInfo.HasGrpc</div>
@@ -44,6 +46,17 @@
     private ApiInfo ApiInfo { get; set; }
     private DataInfo DataInfo { get; set; }
     private MicroserviceInfo? MicroserviceInfo {get;set;}
+    public FileTextData FileTextData {get;set;}=new ();
+    public bool IsTextEditorOpened {get;set;}
+    private void OpenFileForEditor(FileTextData fileTextData)
+    {
+        FileTextData=fileTextData;
+        IsTextEditorOpened=true;
+    }
+    private void CloseTextEditor()
+    {
+        IsTextEditorOpened=false;
+    }
     protected override void OnInitialized()
     {
         MicroserviceInfo = Storage.Items

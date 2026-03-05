@@ -2,9 +2,11 @@
 @using System.IO
 @using MicroserviceAnalyzer.BL.Models
 @using MicroserviceAnalyzer.Entities
+@inject IJSRuntime JsRuntime
 
 
-<div class="tree-node" oncontextmenu="@HandleContextMenu" @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation>    
+<div class="tree-node" oncontextmenu="@HandleContextMenu" @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation
+@ondblclick="@(async()=>{await LoadTextAsync();})" @ondblclick:stopPropagation>    
     
     <div class="node-content @(Node.IsSelected ? "selected" : "")" 
          style="padding-left: @(Level * 20)px">
@@ -40,7 +42,8 @@
             @foreach (var child in Node.Children.OrderBy(c => c.IsDirectory ? 0 : 1).ThenBy(c => c.Name))
             {
                 <TreeViewNode Node="child" Level="@(Level + 1)" Tree="Tree" ShowContextMenu="@ShowContextMenu"
-                SetContextMenuPos="@SetContextMenuPos" AddAlterOperationScript="@AddAlterOperationScript"/>
+                SetContextMenuPos="@SetContextMenuPos" AddAlterOperationScript="@AddAlterOperationScript"
+                OnTextLoaded="@OnTextLoaded"/>
             }
         </div>
     }
@@ -53,10 +56,9 @@
     [Parameter] public EventCallback<FileSystem.TreeNode> ShowContextMenu {get;set;}
     [Parameter] public EventCallback<MouseEventArgs> SetContextMenuPos {get;set;}
     [Parameter] public EventCallback<string> AddAlterOperationScript {get;set;}
+    [Parameter] public EventCallback<FileTextData> OnTextLoaded { get; set; }
 
     private ElementReference editInputRef;
-    private bool _showContextMenu;
-    private List<ContextMenuItem> _currentContextMenuItems=new();
     
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -67,6 +69,19 @@
         }
     }
     
+    private async Task LoadTextAsync()
+    {
+        if (OnTextLoaded.HasDelegate && !Node.IsDirectory)
+        {
+            var fileTextData = new FileTextData()
+            {
+                FileName=Node.Name,
+                Text = File.Exists(Node.FullPath) ? await File.ReadAllTextAsync(Node.FullPath) : string.Empty,
+                FileRelativeToMicroservicePath = Path.Combine(Node.FullPath.Split(Path.DirectorySeparatorChar)[4..])
+            };
+            await OnTextLoaded.InvokeAsync(fileTextData);
+        }
+    }
     
     private void ToggleNode(FileSystem.TreeNode node)
     {
@@ -101,28 +116,7 @@
         }
         
         node.IsEditing = false;
-    }
-    
-    private string FormatSize(long bytes)
-    {
-        string[] sizes = { "B", "KB", "MB", "GB" };
-        int order = 0;
-        double len = bytes;
-        while (len >= 1024 && order < sizes.Length - 1)
-        {
-            order++;
-            len /= 1024;
-        }
-        return $"{len:0.##} {sizes[order]}";
-    }
-    
-    private string GetChildCount(FileSystem.TreeNode node)
-    {
-        if (node.Children == null) return "0";
-        var dirs = node.Children.Count(c => c.IsDirectory);
-        var files = node.Children.Count(c => !c.IsDirectory);
-        return $"{dirs}/{files}";
-    }    
+    }         
     
     private void HandleContextMenu(MouseEventArgs e)
     {

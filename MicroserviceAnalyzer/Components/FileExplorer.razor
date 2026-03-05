@@ -24,7 +24,8 @@
                 <TreeViewNode Node="Tree.Root" Level="0" Tree="Tree" ShowContextMenu="@ShowContextMenu"
                 SetContextMenuPos="@SetContextMenuPos" AddAlterOperationScript="@(async(string newName)=>{
                     await AddAlterOperationScript("mv", newName);
-                })"/>
+                })"
+                OnTextLoaded="@OnTextLoaded"/>
             </div>
             
         }
@@ -39,6 +40,7 @@
 @code {
     [Parameter] public FileSystem? Tree { get; set; }
     [Parameter] public EventCallback<string> AppendScript {get;set;}
+    [Parameter] public EventCallback<FileTextData> OnTextLoaded { get; set; }
     
     private ElementReference _containerRef;
     private bool _allExpanded;
