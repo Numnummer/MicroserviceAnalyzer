@@ -50,9 +50,26 @@ public class NlayerDataAnalyzer(IProjectService projectService):ChainUnit
         return false;
     }
 
+    private EfCoreProvider? GetEfCoreProvider(FileSystem.TreeNode dataLayerNode)
+    {
+        var projectFile = dataLayerNode?.Children?.FirstOrDefault(n => n.Name.Split('.').Last() == "csproj");
+        if (projectFile != null)
+        {
+            // TODO: подумать может ли быть много разных провайдеров в проекте и как это обрабатывать.
+            var content = File.ReadAllText(projectFile.FullPath);
+            var pgsqlTrigger = "PackageReference Include=\"Npgsql.EntityFrameworkCore.PostgreSQL\"";
+            var sqlservTrigger = "PackageReference Include=\"Microsoft.EntityFrameworkCore.SqlServer\"";
+            var sqliteTrigger = "PackageReference Include=\"Microsoft.EntityFrameworkCore.Sqlite\"";
+            if (content.Contains(pgsqlTrigger)) return EfCoreProvider.psql;
+            if (content.Contains(sqlservTrigger)) return EfCoreProvider.sqlserv;
+            if (content.Contains(sqliteTrigger)) return EfCoreProvider.sqlite;
+        }
+        return null;
+    }
+
     private bool HasFileEfCoreDbContext(FileSystem.TreeNode fileNode)
     {
-        var file= fileNode.Children != null
+        var file = fileNode.Children != null
             ? fileNode.Children.First(n => n.Name.Split('.').Last() == "cs")
             : fileNode;
         var content = File.ReadAllText(file.FullPath);
