@@ -17,6 +17,7 @@ public class NlayerDataAnalyzer(IProjectService projectService):ChainUnit
         {
             request.DataInfo.HasEfCoreContext = HasEfCoreDbContext(request.FileSystem, dataLayerNode);
             request.DataInfo.DotnetVersion = await projectService.GetDotnetVersionAsync(dataLayerNode) ?? "net8.0";
+            request.DataInfo.EfCoreProvider = GetEfCoreProvider(dataLayerNode);
         }
         
         await NextUnitAsync(request);

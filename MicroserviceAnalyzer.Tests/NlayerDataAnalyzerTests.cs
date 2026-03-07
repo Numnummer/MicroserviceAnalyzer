@@ -31,7 +31,7 @@ public class NlayerDataAnalyzerTests
         await _analyzer.HandleRequestAsync(request);
         Assert.That(request.DataInfo.HasEfCoreContext);
     }
-    
+
     [Test]
     public async Task HasNotEfCorePredictTrue()
     {
@@ -41,5 +41,16 @@ public class NlayerDataAnalyzerTests
         };
         await _analyzer.HandleRequestAsync(request);
         Assert.That(!request.DataInfo.HasEfCoreContext);
+    }
+    
+    [Test]
+    public async Task HasSqlservProvider()
+    {
+        var request = new MicroserviceInfo
+        {
+            FileSystem = new FileSystem(TestMicroservicesHelper.GetMicroservicePath("NlayerWithEfCore"))
+        };
+        await _analyzer.HandleRequestAsync(request);
+        Assert.That(request.DataInfo.EfCoreProvider, Is.EqualTo(EfCoreProvider.sqlserv));
     }
 }
