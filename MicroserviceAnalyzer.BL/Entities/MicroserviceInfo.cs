@@ -11,8 +11,10 @@ public class MicroserviceInfo
     
     [Obsolete]
     public List<string> Keywords { get; set; } = [];
+    public List<AssemblyInfo> AssemblyInfos = [];
     
-    public ApiInfo ApiInfo { get; set; } = new();
+    public ApiInfo ApiInfo
+    { get; set; } = new();
     public DataInfo DataInfo { get; set; } = new();
     public StringBuilder Script { get; set; } = new();
     

@@ -6,6 +6,7 @@ using MicroserviceAnalyzer.BL.Entities;
 using MicroserviceAnalyzer.BL.Helpers;
 using MicroserviceAnalyzer.BL.Models.AnalyzerChain;
 using MicroserviceAnalyzer.BL.Models.AnalyzerChain.Nlayer;
+using MicroserviceAnalyzer.BL.Models.BuilderChain;
 using MicroserviceAnalyzer.BL.Variations;
 
 namespace MicroserviceAnalyzer.BL.Services;
@@ -59,7 +60,8 @@ public class MicroserviceService:IMicroserviceService,IDisposable
         var baseUnit = new NlayerBaseBuilder();
         baseUnit.WithSuccessor(new NlayerApiBuilder())
             .WithSuccessor(new NlayerDataBuilder())
-            .WithSuccessor(new NlayerOtherLayersBuilder());
+            .WithSuccessor(new NlayerOtherLayersBuilder())
+            .WithSuccessor(new NugetPackagesBuilder());
         await baseUnit.HandleRequestAsync(microserviceInfo);
     }
 
@@ -69,7 +71,8 @@ public class MicroserviceService:IMicroserviceService,IDisposable
         var baseUnit = new AnalyzeArchitectureVariationUnit();
         baseUnit.WithSuccessor(new NlayerApiAnalyzer(new ProjectService()))
             .WithSuccessor(new NlayerDataAnalyzer(new ProjectService()))
-            .WithSuccessor(new NlayerNameAnalyzer());
+            .WithSuccessor(new NlayerNameAnalyzer())
+            .WithSuccessor(new NugetPackagesAnalyzer());
         await baseUnit.HandleRequestAsync(microserviceInfo);
     }
 

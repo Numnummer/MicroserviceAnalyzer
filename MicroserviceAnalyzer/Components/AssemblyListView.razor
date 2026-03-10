@@ -1,0 +1,126 @@
+﻿@using System.IO
+@using MicroserviceAnalyzer.BL.Entities
+
+<div class="assemblies-container" style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    max-width: 100%;">
+    @if (Assemblies == null || !Assemblies.Any())
+    {
+        <div class="alert alert-info" style="padding: 16px;
+            background: #e7f3ff;
+            border: 1px solid #b8daff;
+            border-radius: 6px;
+            color: #004085; ">
+            Нет данных о сборках для отображения
+        </div>
+    }
+    else
+    {
+        <div class="assemblies-list" style="display: flex;
+            flex-direction: column;
+            gap: 8px;">
+            @foreach (var assembly in Assemblies)
+            {
+                <div class="assembly-card" style="border: 1px solid #e0e0e0;
+                    border-radius: 6px;
+                    overflow: hidden;
+                    background: white;
+                    transition: all 0.2s;">
+                    <div class="assembly-header" style="display: flex;
+                        align-items: center;
+                        padding: 12px 16px;
+                        background: #f8f9fa;
+                        cursor: pointer;
+                        user-select: none;
+                        gap: 8px;"
+                        @onclick="() => ToggleAssembly(assembly)">
+                        <span class="expand-icon" style="font-size: 12px;
+                            width: 20px;
+                            color: #666;">@(expandedAssemblies.Contains(assembly) ? "▼" : "▶")</span>
+                        <span class="assembly-name" style="font-weight: 600;
+                            color: #333;
+                            flex: 1;">@GetAssemblyName(assembly)</span>
+                        <span class="assembly-badge" style="background: #007bff;
+                            color: white;
+                            padding: 4px 8px;
+                            border-radius: 12px;
+                            font-size: 12px;">@assembly.NugetPackages.Length пакетов</span>
+                    </div>
+                    
+                    @if (expandedAssemblies.Contains(assembly))
+                    {
+                        <div class="assembly-details" style="padding: 16px;
+                            border-top: 1px solid #e0e0e0;
+                            background: white;">                            
+                            
+                            @if (assembly.NugetPackages.Any())
+                            {
+                                <div class="packages-section" style="margin-top: 12px;">
+                                    <strong>NuGet пакеты:</strong>
+                                    <div class="packages-grid" style="display: flex;
+                                        flex-wrap: wrap;
+                                        gap: 8px;
+                                        margin-top: 8px;">
+                                        @foreach (var package in assembly.NugetPackages)
+                                        {
+                                            <span class="package-tag" style="background: #e7f3ff;
+                                                color: #0066cc;
+                                                padding: 4px 12px;
+                                                border-radius: 16px;
+                                                font-size: 12px;
+                                                border: 1px solid #cce5ff;">@package</span>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="no-packages" style="color: #999;
+                                    font-style: italic;
+                                    padding: 8px 0;">
+                                    <em>Нет NuGet пакетов</em>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public IEnumerable<AssemblyInfo>? Assemblies { get; set; }
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public bool InitiallyExpanded { get; set; } = false;
+    
+    private HashSet<AssemblyInfo> expandedAssemblies = new();
+    
+    protected override void OnInitialized()
+    {
+        if (InitiallyExpanded && Assemblies != null)
+        {
+            foreach (var assembly in Assemblies)
+            {
+                expandedAssemblies.Add(assembly);
+            }
+        }
+    }
+    
+    private void ToggleAssembly(AssemblyInfo assembly)
+    {
+        if (expandedAssemblies.Contains(assembly))
+            expandedAssemblies.Remove(assembly);
+        else
+            expandedAssemblies.Add(assembly);
+    }
+    
+    private string GetAssemblyName(AssemblyInfo assembly)
+    {
+        if (assembly.AssemblyTreeNode?.Name != null)
+            return assembly.AssemblyTreeNode.Name;
+        
+        // Пытаемся извлечь имя из пути
+        var path = assembly.AssemblyTreeNode?.FullPath ?? "Неизвестно";
+        return Path.GetFileName(path) ?? path;
+    }
+}

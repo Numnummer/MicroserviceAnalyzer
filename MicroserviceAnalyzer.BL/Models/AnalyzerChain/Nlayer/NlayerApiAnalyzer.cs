@@ -22,14 +22,16 @@ public class NlayerApiAnalyzer(IProjectService projectService): ChainUnit
         
         request.ApiInfo.HasWeb=apiNode != null && grpcNode == null;
         request.ApiInfo.HasGrpc=apiNode != null && grpcNode != null;
-        
+
         if (apiNode != null && grpcNode == null)
         {
-            request.ApiInfo.DotnetVersion=await projectService.GetDotnetVersionAsync(apiNode) ?? "net8.0";
+            request.ApiInfo.DotnetVersion = await projectService.GetDotnetVersionAsync(apiNode) ?? "net8.0";
+            request.AssemblyInfos.Add(new AssemblyInfo(apiNode));
         }
-        else if(apiNode != null && grpcNode != null)
+        else if (apiNode != null && grpcNode != null)
         {
-            request.ApiInfo.DotnetVersion=await projectService.GetDotnetVersionAsync(grpcNode) ?? "net8.0";
+            request.ApiInfo.DotnetVersion = await projectService.GetDotnetVersionAsync(grpcNode) ?? "net8.0";
+            request.AssemblyInfos.Add(new AssemblyInfo(grpcNode));
         }
         await NextUnitAsync(request);
     }

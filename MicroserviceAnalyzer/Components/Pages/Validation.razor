@@ -19,7 +19,9 @@
         <div style="margin-left: 2vw">Версия dotnet api слоя @ApiInfo.DotnetVersion</div>
         <div style="margin-left: 2vw">Есть EfCore DbContext @DataInfo.HasEfCoreContext</div>
         <div style="margin-left: 2vw">Версия dotnet data слоя @DataInfo.DotnetVersion</div>
+        <div style="margin-left: 2vw">Имя провайдера EfCore: @_efCoreProviderName</div>
     </div>
+    <AssemblyListView Assemblies="@MicroserviceInfo?.AssemblyInfos"></AssemblyListView>
     
 </div>
 
@@ -48,6 +50,7 @@
     private MicroserviceInfo? MicroserviceInfo {get;set;}
     public FileTextData FileTextData {get;set;}=new ();
     public bool IsTextEditorOpened {get;set;}
+    private string _efCoreProviderName="None";
     private void OpenFileForEditor(FileTextData fileTextData)
     {
         FileTextData=fileTextData;
@@ -70,6 +73,13 @@
         FileSystem = MicroserviceInfo?.FileSystem;
         ApiInfo = MicroserviceInfo?.ApiInfo ?? new ApiInfo();
         DataInfo = MicroserviceInfo?.DataInfo ?? new DataInfo();
+        _efCoreProviderName = DataInfo.EfCoreProvider switch
+        {
+            EfCoreProvider.psql=>"PostgreSQL",
+            EfCoreProvider.sqlite=>"SqLite",
+            EfCoreProvider.sqlserv=>"Sql Server",
+            _=>"None"
+        };
     }
 
     private async Task DownloadScript()
